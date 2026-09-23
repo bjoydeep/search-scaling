@@ -1,0 +1,5 @@
+*
+!analytical*.md
+!scripts/
+!scripts/*.sh
+!.gitignore
