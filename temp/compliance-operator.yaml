@@ -1,0 +1,56 @@
+# This policy verifies the installation of the official & supported version of
+# the Compliance Operator on the managed clusters.
+#
+# If set to "enforce" it'll install the operator.
+#
+# Note that OpenShift 4.6 is required.
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: policy-comp-operator
+  annotations:
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+    policy.open-cluster-management.io/categories: CA Security Assessment and Authorization
+    policy.open-cluster-management.io/controls: CA-2 Security Assessments, CA-7 Continuous Monitoring
+spec:
+  remediationAction: inform
+  disabled: false
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: comp-operator-ns
+        spec:
+          remediationAction: inform # will be overridden by remediationAction in parent policy
+          severity: high
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                kind: Namespace
+                metadata:
+                  name: openshift-compliance
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1beta1
+        kind: OperatorPolicy
+        metadata:
+          name: operatorpolicy-comp-operator
+        spec:
+          remediationAction: inform
+          severity: high
+          complianceType: musthave
+          upgradeApproval: Automatic
+          operatorGroup:
+            name: compliance-operator
+            namespace: openshift-compliance
+            targetNamespaces:
+              - openshift-compliance
+          subscription:
+            name: compliance-operator
+            namespace: openshift-compliance
+            source: redhat-operators
+            sourceNamespace: openshift-marketplace
+            # Conditionally configure a nodeSelector for installing on ROSA hosted control planes
+            config: '{{ if and (eq "ROSA" (lookup "cluster.open-cluster-management.io/v1alpha1" "ClusterClaim" "" "product.open-cluster-management.io").spec.value) (eq "true" (lookup "cluster.open-cluster-management.io/v1alpha1" "ClusterClaim" "" "hostedcluster.hypershift.openshift.io").spec.value) }}{"nodeSelector":{"node-role.kubernetes.io/worker":""} }{{ else }}{{ "{}" | toLiteral }}{{ end }}'
+
