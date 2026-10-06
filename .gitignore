@@ -4,3 +4,5 @@
 !scripts/*.sh
 !.gitignore
 !postgres-tuning.conf
+!temp/
+!temp/**
