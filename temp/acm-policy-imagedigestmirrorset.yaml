@@ -1,0 +1,76 @@
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: policy-imagedigestmirrorset
+  namespace: policies
+  annotations:
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+spec:
+  remediationAction: enforce
+  disabled: false
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: config-imagedigestmirrorset
+        spec:
+          remediationAction: enforce
+          severity: medium
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: config.openshift.io/v1
+                kind: ImageDigestMirrorSet
+                metadata:
+                  name: verizon-internal-mirrors
+                spec:
+                  imageDigestMirrors:
+                    - mirrors:
+                        - "cawcartifactory-int.ws.vici.verizon.com/fe_platform_docker_dev/redhat/openshift-4-stable"
+                      source: "quay.io/openshift-release-dev/ocp-release"
+                    - mirrors:
+                        - "cawcartifactory-int.ws.vici.verizon.com/fe_platform_docker_dev/redhat/openshift-4-stable"
+                      source: "quay.io/openshift-release-dev/ocp-v4.0-art-dev"
+                    - mirrors:
+                        - "cawcartifactory-int.ws.vici.verizon.com/fe_platform_docker_dev/external/registry.connect.redhat.com"
+                      source: "registry.connect.redhat.com"
+                    - mirrors:
+                        - "cawcartifactory-int.ws.vici.verizon.com/fe_platform_docker_dev/external/registry.redhat.io"
+                      source: "registry.redhat.io"
+                    - mirrors:
+                        - "cawcartifactory-int.ws.vici.verizon.com/fe_platform_docker_dev/external/docker.io"
+                      source: "docker.io"
+---
+apiVersion: cluster.open-cluster-management.io/v1beta2
+kind: Placement
+metadata:
+  name: placement-policy-imagedigestmirrorset
+  namespace: policies
+spec:
+  predicates:
+    - requiredClusterSelector:
+        labelSelector:
+          matchExpressions:
+            - key: env
+              operator: In
+              values:
+                - production
+                - staging
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: binding-policy-imagedigestmirrorset
+  namespace: policies
+placementRef:
+  name: placement-policy-imagedigestmirrorset
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
+subjects:
+  - name: policy-imagedigestmirrorset
+    apiGroup: policy.open-cluster-management.io
+    kind: Policy
