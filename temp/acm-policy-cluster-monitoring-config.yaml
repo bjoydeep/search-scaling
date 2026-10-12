@@ -1,0 +1,73 @@
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: policy-cluster-monitoring-config
+  namespace: policies
+  annotations:
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+    policy.open-cluster-management.io/categories: AU Audit and Accountability
+    policy.open-cluster-management.io/controls: AU-12 Audit Record Generation
+spec:
+  remediationAction: enforce
+  disabled: false
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: config-cluster-monitoring-config
+        spec:
+          remediationAction: enforce
+          severity: medium
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                kind: ConfigMap
+                metadata:
+                  name: cluster-monitoring-config
+                  namespace: openshift-monitoring
+                data:
+                  config.yaml: |
+                    prometheusK8s:
+                      externalLabels:
+                        # Dynamically set to the managed cluster name via ACM hub templating
+                        cluster: '{{hub .ManagedClusterName hub}}'
+                        vendor: OpenShift
+                        managed_by: ACM
+                    alertmanagerMain:
+                      externalLabels:
+                        cluster: '{{hub .ManagedClusterName hub}}'
+                        vendor: OpenShift
+                        managed_by: ACM
+---
+apiVersion: cluster.open-cluster-management.io/v1beta2
+kind: Placement
+metadata:
+  name: placement-policy-cluster-monitoring-config
+  namespace: policies
+spec:
+  predicates:
+    - requiredClusterSelector:
+        labelSelector:
+          matchExpressions:
+            - key: env
+              operator: In
+              values:
+                - production
+                - staging
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: binding-policy-cluster-monitoring-config
+  namespace: policies
+placementRef:
+  name: placement-policy-cluster-monitoring-config
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
+subjects:
+  - name: policy-cluster-monitoring-config
+    apiGroup: policy.open-cluster-management.io
+    kind: Policy
